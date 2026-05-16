@@ -186,8 +186,8 @@ input[type=range]{width:100%;accent-color:#fff;cursor:pointer}
     <span class="lbl">Auto-refresh (live feed)</span>
     <div class="rg">
       <div class="ro" data-v="0" onclick="setRefresh(0)">OFF</div>
-      <div class="ro" data-v="30" onclick="setRefresh(30)">30s</div>
-      <div class="ro on" data-v="60" onclick="setRefresh(60)">1 min</div>
+      <div class="ro on" data-v="30" onclick="setRefresh(30)">30s</div>
+      <div class="ro" data-v="60" onclick="setRefresh(60)">1 min</div>
       <div class="ro" data-v="120" onclick="setRefresh(120)">2 min</div>
       <div class="ro" data-v="300" onclick="setRefresh(300)">5 min</div>
       <div class="ro" data-v="600" onclick="setRefresh(600)">10 min</div>
@@ -422,7 +422,6 @@ function setRefresh(sec, ns) {
   } else {
     setLive(false, 'Auto-refresh desactivado');
   }
-  document.getElementById('live-badge').classList.toggle('visible', sec > 0);
   if (!ns) save();
 }
 
@@ -721,15 +720,18 @@ function readUrl() {
     ids.forEach(function(id, i) { addFolderEntry(id, names[i] || id, true, null); });
   } else loadPresets();
   applyBg();
-  setRefresh(p.has('rf') ? parseInt(p.get('rf')) : 60, true);
-  // AUTO-LOAD: si vienen ak + fids en la URL, carga automático
-  if (p.has('ak') && p.has('fids') && p.get('fids')) setTimeout(manualRefresh, 800);
+  setRefresh(p.has('rf') ? parseInt(p.get('rf')) : 30, true);
+  // AUTO-LOAD al abrir la URL — espera 1.5s para que el DOM esté listo
+  if (p.has('ak') && p.has('fids') && p.get('fids')) setTimeout(manualRefresh, 1500);
 }
 
 // ── Init ───────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', function() {
   applyBg();
-  setW(360, true);
+  setW(410, true);
+  document.getElementById('wslider').value = 410;
+  setIv(4, true);
+  document.getElementById('ivslider').value = 4;
   setPos('right', true);
   if (window.location.search.length > 1) readUrl();
   else if (!loadSaved()) loadPresets();
