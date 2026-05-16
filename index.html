@@ -679,6 +679,29 @@ function exportUrl() {
 }
 
 // ── Leer URL params (para OBS) ─────────────────────
+// ── Layout vertical/horizontal ─────────────────────
+function setLayout(layout) {
+  var sw = document.getElementById('sw');
+  var promo = document.getElementById('promo');
+  var promoImg = document.getElementById('promo-img');
+  if (layout === 'v') {
+    // VERTICAL: panel angosto, ocupa alto completo
+    // slide arriba (flex:1), promo abajo más pequeña
+    sw.style.flexDirection = 'column';
+    // En vertical hacemos el wrapper más angosto y centrado
+    // El ancho ya viene por URL param w=
+    // La promo ocupa menos altura proporcionalmente
+    promoImg.style.maxHeight = '35vh';
+    promoImg.style.objectFit = 'contain';
+    promoImg.style.objectPosition = 'bottom';
+  } else {
+    // HORIZONTAL: default, sin cambios
+    promoImg.style.maxHeight = '';
+    promoImg.style.objectFit = '';
+    promoImg.style.objectPosition = '';
+  }
+}
+
 function readUrl() {
   var p = new URLSearchParams(window.location.search);
   if (p.has('ak')) document.getElementById('api-key').value = p.get('ak');
@@ -691,6 +714,7 @@ function readUrl() {
   if (p.has('iv')) { document.getElementById('ivslider').value = p.get('iv'); setIv(p.get('iv'), true); }
   if (p.has('tr')) document.getElementById('trsel').value = p.get('tr');
   if (p.has('ord')) document.getElementById('ordsel').value = p.get('ord');
+  if (p.has('layout')) setLayout(p.get('layout'));
   if (p.has('fids') && p.get('fids')) {
     var ids = p.get('fids').split(',').filter(Boolean);
     var names = p.has('fnames') ? p.get('fnames').split('|') : [];
@@ -698,7 +722,8 @@ function readUrl() {
   } else loadPresets();
   applyBg();
   setRefresh(p.has('rf') ? parseInt(p.get('rf')) : 60, true);
-  if (p.has('ak') && p.has('fids') && p.get('fids')) setTimeout(manualRefresh, 600);
+  // AUTO-LOAD: si vienen ak + fids en la URL, carga automático
+  if (p.has('ak') && p.has('fids') && p.get('fids')) setTimeout(manualRefresh, 800);
 }
 
 // ── Init ───────────────────────────────────────────
