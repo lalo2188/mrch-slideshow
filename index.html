@@ -44,18 +44,6 @@ body{background:transparent;overflow:hidden;width:100vw;height:100vh}
   display:flex;flex-direction:column;align-items:center;justify-content:center;
 }
 
-/* LIVE badge */
-#live-badge{
-  position:absolute;top:8px;right:8px;z-index:20;
-  display:flex;align-items:center;gap:4px;
-  background:rgba(0,0,0,.75);border:1px solid rgba(255,50,50,.5);
-  border-radius:4px;padding:3px 7px;
-  font-family:'Segoe UI',sans-serif;font-size:10px;
-  font-weight:700;color:#ff4444;letter-spacing:.08em;
-  opacity:0;transition:opacity .4s;pointer-events:none;
-}
-#live-badge.visible{opacity:1}
-.ldot{width:6px;height:6px;border-radius:50%;background:#ff4444;animation:lp 1.4s infinite}
 @keyframes lp{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.3;transform:scale(.7)}}
 
 /* Toast nuevas imágenes */
@@ -82,7 +70,7 @@ body{background:transparent;overflow:hidden;width:100vw;height:100vh}
 
 /* PNG PROMO abajo - fijo */
 #promo{flex-shrink:0;width:100%;line-height:0;pointer-events:auto}
-#promo img{width:100%;display:block}
+#promo img{width:100%;display:block;mix-blend-mode:screen}
 
 /* ===== PANEL ===== */
 #ptog{
@@ -283,14 +271,14 @@ input[type=range]{width:100%;accent-color:#fff;cursor:pointer}
         Configura tus carpetas de Drive<br>
         <span style="font-size:10px;opacity:.5">Las imágenes aparecerán aquí en vivo</span>
       </div>
-      <div id="live-badge"><div class="ldot"></div>LIVE</div>
+
       <div id="toast"></div>
       <div class="dot-nav" id="dnav"></div>
       <div id="ctr"></div>
     </div>
   </div>
   <div id="promo">
-    <img id="promo-img" src="https://lalo2188.github.io/mrch-slideshow/MRCH-PROMOTION.png" alt="MRCH Promo">
+    <img id="promo-img" src="https://lalo2188.github.io/mrch-slideshow/promo.png" alt="MRCH Promo">
   </div>
 </div>
 
@@ -554,7 +542,7 @@ function appendSlide(imgData, ak) {
   el.src = 'https://lh3.googleusercontent.com/d/' + imgData.id;
   el.onerror = function() { el.src = 'https://drive.google.com/thumbnail?id=' + imgData.id + '&sz=w800'; };
   div.appendChild(el);
-  frame.insertBefore(div, document.getElementById('live-badge'));
+  frame.insertBefore(div, document.getElementById('toast'));
   slides.push(div);
 
   var dot = document.createElement('div');
