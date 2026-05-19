@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>MRCH Slideshow Vertical</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:transparent; overflow:hidden; width:100vw; height:100vh; }
+
+/*
+  LAYOUT VERTICAL (barra inferior 1920x1080):
+  OBS: fuente navegador 1920x320 aprox, posicionada abajo
+
+  ┌──────────────────┬─────────────────────────────┐
+  │   SLIDE          │     promo-v.png              │
+  │   (cuadrado)     │   (lalo + texto)             │
+  └──────────────────┴─────────────────────────────┘
+*/
+
+#wrap {
+  position: fixed;
+  bottom: 0; left: 0;
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+}
+
+/* SLIDE — izquierda, cuadrado */
+#slide-area {
+  flex-shrink: 0;
+  width: 320px;   /* default, ajustable por URL param */
+  height: 100%;
+  position: relative;
+  overflow: hidden;
+}
+#slide-bg { position:absolute; inset:0; background:#000; z-index:0; }
+#slide-frame { position:relative; width:100%; height:100%; overflow:hidden; z-index:1; }
+
+.slide {
+  position:absolute; inset:0;
+  display:flex; align-items:center; justify-content:center;
+  opacity:0; transition:opacity .8s ease, transform .8s ease;
+  pointer-events:none;
+}
+.slide.active { opacity:1; }
+.slide img { max-width:100%; max-height:100%; object-fit:contain; display:block; }
+
+#no-images {
+  color:rgba(255,255,255,.35); font-family:'Segoe UI',sans-serif;
+  font-size:11px; text-align:center; line-height:2;
+  position:absolute; inset:0;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+}
+
+.dot-nav {
+  position:absolute; bottom:4px; left:50%; transform:translateX(-50%);
+  display:flex; gap:3px; z-index:5; flex-wrap:wrap; justify-content:center; max-width:90%;
+}
+.dot { width:4px; height:4px; border-radius:50%; background:rgba(255,255,255,.28); cursor:pointer; transition:background .3s,transform .3s; flex-shrink:0; }
+.dot.active { background:#fff; transform:scale(1.5); }
+
+#ctr { position:absolute; bottom:4px; right:5px; font-size:9px; color:rgba(255,255,255,.18); font-family:monospace; z-index:10; pointer-events:none; }
+
+#toast {
+  position:absolute; top:6px; left:50%;
+  transform:translateX(-50%) translateY(-10px);
+  background:rgba(0,0,0,.88); border:1px solid rgba(255,255,255,.15);
+  border-radius:16px; padding:3px 10px;
+  font-family:'Segoe UI',sans-serif; font-size:9px; color:#fff;
+  white-space:nowrap; opacity:0;
+  transition:opacity .4s,transform .4s; z-index:20; pointer-events:none;
+}
+#toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+
+/* PROMO — derecha, ocupa el resto */
+#promo {
+  flex:1;
+  height:100%;
+  position:relative;
+  overflow:hidden;
+  display:flex;
+  align-items:center;
+  justify-content:flex-start;
+}
+#promo img {
+  height:100%;
+  width:auto;
+  display:block;
+  object-fit:contain;
+  object-position:left center;
+}
+
+/* ══════════ PANEL ══════════ */
+#ptog {
+  position:fixed; top:8px; left:8px; z-index:9999;
+  background:rgba(0,0,0,.88); color:#fff;
+  border:1px solid rgba(255,255,255,.2); border-radius:6px;
+  padding:5px 11px; font-size:11px; cursor:pointer; font-family:monospace;
+}
+#ptog:hover { background:rgba(255,255,255,.12); }
+
+#panel {
+  position:fixed; top:0; left:0; width:295px; height:100vh;
+  background:rgba(7,7,7,.97); color:#ccc;
+  font-family:'Segoe UI',system-ui,sans-serif; font-size:12px;
+  z-index:9998; overflow-y:auto;
+  padding:48px 14px 26px;
+  border-right:1px solid rgba(255,255,255,.05);
+  transform:translateX(-100%); transition:transform .3s ease;
+}
+#panel.open { transform:translateX(0); }
+#panel h2 { font-size:12px; font-weight:700; color:#fff; margin-bottom:13px; letter-spacing:.08em; text-transform:uppercase; }
+
+.sec { margin-bottom:13px; border-bottom:1px solid rgba(255,255,255,.04); padding-bottom:12px; }
+.sec:last-child { border-bottom:none; }
+.lbl { font-size:9px; text-transform:uppercase; letter-spacing:.12em; color:#444; display:block; margin-bottom:6px; }
+input[type=text],select { width:100%; background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.09); border-radius:5px; color:#ddd; padding:5px 8px; font-size:11px; outline:none; font-family:inherit; }
+input[type=text]:focus,select:focus { border-color:rgba(255,255,255,.28); }
+input[type=range] { width:100%; accent-color:#fff; cursor:pointer; }
+.rsp { display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; }
+.v { color:#fff; font-weight:700; font-size:11px; }
+.trow { display:flex; align-items:center; gap:8px; cursor:pointer; user-select:none; }
+.tog { position:relative; width:30px; height:16px; background:rgba(255,255,255,.1); border-radius:8px; flex-shrink:0; transition:background .2s; }
+.tog::after { content:''; position:absolute; top:2px; left:2px; width:12px; height:12px; border-radius:50%; background:#fff; transition:transform .2s; }
+.tog.on { background:#4caf50; }
+.tog.on::after { transform:translateX(14px); }
+.fl { list-style:none; display:flex; flex-direction:column; gap:3px; margin-top:5px; }
+.fi { display:flex; align-items:center; gap:6px; padding:5px 7px; border-radius:5px; background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.06); cursor:pointer; transition:background .15s; user-select:none; }
+.fi:hover { background:rgba(255,255,255,.07); }
+.fi.sel { background:rgba(255,255,255,.09); border-color:rgba(255,255,255,.18); }
+.fck { width:12px; height:12px; border-radius:3px; border:1.5px solid rgba(255,255,255,.2); flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:8px; color:transparent; transition:all .15s; }
+.fi.sel .fck { background:#fff; border-color:#fff; color:#000; }
+.fn { flex:1; font-size:11px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.fc { font-size:9px; color:#333; white-space:nowrap; }
+.fdl { font-size:9px; color:#2a2a2a; padding:2px 3px; border-radius:3px; transition:color .15s; }
+.fdl:hover { color:#f55; }
+.ar { display:flex; gap:4px; margin-top:6px; }
+.ar input { flex:1; font-family:monospace; font-size:10px; }
+.ar button { padding:4px 8px; border-radius:4px; border:1px solid rgba(255,255,255,.12); background:transparent; color:#ccc; cursor:pointer; font-size:10px; white-space:nowrap; }
+.ar button:hover { background:rgba(255,255,255,.07); }
+.hint { font-size:9px; color:#363636; line-height:1.6; margin-top:4px; }
+.hint a { color:#555; }
+.rg { display:grid; grid-template-columns:repeat(3,1fr); gap:3px; margin-top:5px; }
+.ro { padding:5px 2px; text-align:center; border-radius:4px; border:1px solid rgba(255,255,255,.07); background:rgba(255,255,255,.03); color:#555; font-size:10px; cursor:pointer; transition:all .15s; user-select:none; }
+.ro:hover { background:rgba(255,255,255,.08); }
+.ro.on { background:rgba(255,255,255,.13); border-color:rgba(255,255,255,.28); color:#fff; font-weight:700; }
+.lsb { display:flex; align-items:center; gap:6px; padding:6px 8px; border-radius:5px; background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.05); margin-top:6px; }
+.lsb .ld { width:6px; height:6px; border-radius:50%; background:#2a2a2a; flex-shrink:0; }
+.lsb.on .ld { background:#4caf50; animation:lp 1.4s infinite; }
+@keyframes lp { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.3;transform:scale(.7)} }
+.lsb .lt { font-size:9px; color:#3a3a3a; flex:1; }
+.lsb.on .lt { color:#4caf50; }
+.bp { width:100%; padding:7px; border-radius:5px; border:none; background:#fff; color:#000; font-weight:700; font-size:11px; cursor:pointer; transition:opacity .2s; margin-top:7px; }
+.bp:hover { opacity:.85; }
+.bg_ { width:100%; padding:5px; border-radius:5px; border:1px solid rgba(255,255,255,.1); background:transparent; color:#bbb; font-size:10px; cursor:pointer; transition:background .15s; margin-top:4px; }
+.bg_:hover { background:rgba(255,255,255,.06); }
+.sm { font-size:9px; text-align:center; margin-top:5px; min-height:13px; color:#3a3a3a; }
+.sm.ok { color:#4caf50; }
+.sm.err { color:#f44; }
+.sm.sp { color:#999; }
+</style>
+</head>
+<body>
+
+<button id="ptog" onclick="togglePanel()">⚙ MRCH Vertical</button>
+
+<div id="panel">
+  <h2>⚙ MRCH Vertical</h2>
+
+  <div class="sec">
+    <span class="lbl">Google Drive API Key</span>
+    <input type="text" id="api-key" placeholder="AIzaSy..." oninput="save()">
+  </div>
+
+  <div class="sec">
+    <span class="lbl">Carpetas de Drive</span>
+    <ul class="fl" id="flist"></ul>
+    <div class="ar">
+      <input type="text" id="nfid" placeholder="ID o URL carpeta">
+      <button onclick="addFolder()">+ Add</button>
+    </div>
+    <button class="bp" onclick="manualRefresh()">⟳ Cargar imágenes</button>
+    <div class="sm" id="lstatus"></div>
+  </div>
+
+  <div class="sec">
+    <span class="lbl">Auto-refresh (live feed)</span>
+    <div class="rg">
+      <div class="ro" data-v="0" onclick="setRefresh(0)">OFF</div>
+      <div class="ro on" data-v="30" onclick="setRefresh(30)">30s</div>
+      <div class="ro" data-v="60" onclick="setRefresh(60)">1 min</div>
+      <div class="ro" data-v="120" onclick="setRefresh(120)">2 min</div>
+      <div class="ro" data-v="300" onclick="setRefresh(300)">5 min</div>
+      <div class="ro" data-v="600" onclick="setRefresh(600)">10 min</div>
+    </div>
+    <div class="lsb" id="lsbar"><div class="ld"></div><span class="lt" id="lstxt">Auto-refresh desactivado</span></div>
+  </div>
+
+  <div class="sec">
+    <div class="rsp"><span class="lbl" style="margin:0">Ancho del slide</span><span class="v" id="wval">320px</span></div>
+    <input type="range" id="wslider" min="100" max="800" step="5" value="320" oninput="setW(this.value)">
+  </div>
+
+  <div class="sec">
+    <span class="lbl">Fondo del slide</span>
+    <div class="trow" onclick="toggleBg()">
+      <div class="tog on" id="bgtog"></div>
+      <span id="bglbl">Fondo negro</span>
+    </div>
+    <div id="bgext" style="display:flex;align-items:center;gap:6px;margin-top:8px;flex-wrap:wrap;">
+      <input type="color" id="bgcol" value="#000000" style="width:24px;height:20px;border:none;background:none;cursor:pointer;padding:0;border-radius:3px;" oninput="applyBg();save()">
+      <span style="font-size:9px;color:#444;">Opacidad</span>
+      <input type="range" id="bgopa" min="0" max="100" value="100" style="flex:1;" oninput="applyBg();save()">
+      <span class="v" id="opaval">100%</span>
+    </div>
+  </div>
+
+  <div class="sec">
+    <div class="rsp"><span class="lbl" style="margin:0">Intervalo slides</span><span class="v" id="ivval">4s</span></div>
+    <input type="range" id="ivslider" min="1" max="30" value="4" oninput="setIv(this.value)">
+  </div>
+
+  <div class="sec">
+    <span class="lbl">Transición</span>
+    <select id="trsel" onchange="save()">
+      <option value="fade">Fade</option>
+      <option value="slide">Slide</option>
+      <option value="zoom">Zoom</option>
+    </select>
+  </div>
+
+  <div class="sec">
+    <span class="lbl">Orden</span>
+    <select id="ordsel" onchange="save()">
+      <option value="date-asc">Orden de subida</option>
+      <option value="date-desc">Más nueva primero</option>
+      <option value="name-asc">Nombre A→Z</option>
+      <option value="random">Aleatorio</option>
+    </select>
+  </div>
+
+  <div class="sec">
+    <button class="bg_" onclick="exportUrl()">🔗 Copiar URL para OBS</button>
+    <div class="sm" id="urlst"></div>
+  </div>
+</div>
+
+<!-- LAYOUT HORIZONTAL: slide izq | promo der -->
+<div id="wrap">
+  <div id="slide-area">
+    <div id="slide-bg"></div>
+    <div id="slide-frame">
+      <div id="no-images">
+        <span style="font-size:20px;margin-bottom:6px">📂</span>
+        Configura Drive<br>
+        <span style="font-size:9px;opacity:.5">Las imágenes aparecerán aquí</span>
+      </div>
+      <div id="toast"></div>
+      <div class="dot-nav" id="dnav"></div>
+      <div id="ctr"></div>
+    </div>
+  </div>
+  <div id="promo">
+    <img src="https://lalo2188.github.io/mrch-slideshow/promo-v.png" alt="MRCH Promo">
+  </div>
+</div>
+
+<script>
+var PRESETS = [
+  {id:"1Ada1DYGnVyRM2m7AnWVd1Cvj0dx4l2M2", name:"General"},
+  {id:"1S_LSXGeJftyIyDB55MWsX7GexEpd747v", name:"impresion 3D"},
+  {id:"1d6RTEIsm7x5Cx849-FJ_aQQXZxZPm2uQ", name:"grabado laser"},
+  {id:"1lu2d7_napmpSeEmzbm4uxM7mSvV7SNVU", name:"playeras"},
+  {id:"1Y-Am0-_-fkpNa6CjV9nx9-1caeV11fjz", name:"sublimacion"}
+];
+
+var slides=[],allImages=[],knownIds=new Set();
+var curIdx=0,slideTimer=null,refreshTimer=null,cdTimer=null;
+var refreshSec=30,intervalSec=4,bgOn=true,panelOpen=false;
+var FOLDERS=[];
+
+function togglePanel(){panelOpen=!panelOpen;document.getElementById('panel').classList.toggle('open',panelOpen);document.getElementById('ptog').textContent=panelOpen?'✕ Cerrar':'⚙ MRCH Vertical';}
+
+function setW(v,ns){v=parseInt(v);document.getElementById('wval').textContent=v+'px';document.getElementById('slide-area').style.width=v+'px';if(!ns)save();}
+
+function toggleBg(ns){bgOn=!bgOn;document.getElementById('bgtog').classList.toggle('on',bgOn);document.getElementById('bglbl').textContent=bgOn?'Fondo negro':'Sin fondo';document.getElementById('bgext').style.opacity=bgOn?'1':'0.3';applyBg();if(!ns)save();}
+
+function applyBg(){var bg=document.getElementById('slide-bg');if(!bgOn){bg.style.opacity='0';return;}var opa=document.getElementById('bgopa').value;bg.style.background=document.getElementById('bgcol').value;bg.style.opacity=opa/100;document.getElementById('opaval').textContent=opa+'%';}
+
+function setIv(v,ns){intervalSec=parseInt(v);document.getElementById('ivval').textContent=intervalSec+'s';restartSlideTimer();if(!ns)save();}
+
+function addFolder(){var inp=document.getElementById('nfid');var raw=inp.value.trim();if(!raw)return;var m=raw.match(/folders\/([a-zA-Z0-9_-]+)/);var id=m?m[1]:raw;if(FOLDERS.some(function(f){return f.id===id;})){inp.value='';return;}FOLDERS.push({id:id,name:id,sel:true,count:null});renderFolders();inp.value='';save();}
+
+function addFolderEntry(id,name,sel,count){if(FOLDERS.some(function(f){return f.id===id;}))return;FOLDERS.push({id:id,name:name||id,sel:sel!==false,count:count!=null?count:null});renderFolders();}
+
+function renderFolders(){var ul=document.getElementById('flist');ul.innerHTML='';FOLDERS.forEach(function(f,i){var li=document.createElement('li');li.className='fi'+(f.sel?' sel':'');var ck=document.createElement('div');ck.className='fck';ck.textContent=f.sel?'✓':'';var nm=document.createElement('span');nm.className='fn';nm.title=f.id;nm.textContent=f.name||f.id;var ct=document.createElement('span');ct.className='fc';ct.textContent=f.count!==null?f.count+' imgs':'';var dl=document.createElement('span');dl.className='fdl';dl.textContent='✕';dl.onclick=function(e){e.stopPropagation();FOLDERS.splice(i,1);renderFolders();save();};li.appendChild(ck);li.appendChild(nm);li.appendChild(ct);li.appendChild(dl);li.addEventListener('click',function(e){if(e.target===dl)return;f.sel=!f.sel;renderFolders();save();});ul.appendChild(li);});}
+
+function delF(i,e){e.stopPropagation();FOLDERS.splice(i,1);renderFolders();save();}
+
+function setRefresh(sec,ns){refreshSec=sec;document.querySelectorAll('.ro').forEach(function(el){el.classList.toggle('on',parseInt(el.dataset.v)===sec);});clearInterval(refreshTimer);clearInterval(cdTimer);if(sec>0){refreshTimer=setInterval(silentRefresh,sec*1000);setLive(true,'Próxima actualización en '+fmt(sec));startCd(sec);}else setLive(false,'Auto-refresh desactivado');if(!ns)save();}
+
+function fmt(s){return s<60?s+'s':Math.round(s/60)+' min';}
+var cdLeft=0;
+function startCd(sec){clearInterval(cdTimer);cdLeft=sec;cdTimer=setInterval(function(){cdLeft--;if(cdLeft<=0){setLive(true,'Actualizando…');cdLeft=refreshSec;}else setLive(true,'Próxima actualización en '+cdLeft+'s');},1000);}
+function setLive(on,txt){var b=document.getElementById('lsbar');b.classList.toggle('on',on);document.getElementById('lstxt').textContent=txt;}
+
+var IMGTYPES=['image/jpeg','image/jpg','image/png','image/gif','image/webp'];
+function fetchFolder(folder,apiKey){var url='https://www.googleapis.com/drive/v3/files?q=%27'+folder.id+'%27+in+parents+and+mimeType+contains+%27image/%27&fields=files(id,name,mimeType,createdTime,modifiedTime)&orderBy=createdTime&pageSize=200&key='+apiKey;return fetch(url).then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json();}).then(function(d){if(d.error)throw new Error(d.error.message);return(d.files||[]).filter(function(f){return IMGTYPES.indexOf(f.mimeType)!==-1;});});}
+
+async function manualRefresh(){var ak=document.getElementById('api-key').value.trim();if(!ak){setSt('err','⚠ Falta API Key');return;}var sel=FOLDERS.filter(function(f){return f.sel;});if(!sel.length){setSt('err','⚠ Selecciona carpeta');return;}setSt('sp','⟳ Cargando…');var col=[];for(var i=0;i<sel.length;i++){try{var imgs=await fetchFolder(sel[i],ak);sel[i].count=imgs.length;imgs.forEach(function(img){col.push(Object.assign({},img,{fn:sel[i].name}));});}catch(e){setSt('err',e.message);renderFolders();return;}}renderFolders();allImages=sortImgs(col);knownIds=new Set(allImages.map(function(i){return i.id;}));buildSlideshow(allImages,ak);setSt('ok','✓ '+allImages.length+' imgs cargadas');if(refreshSec>0)startCd(refreshSec);}
+
+async function silentRefresh(){var ak=document.getElementById('api-key').value.trim();if(!ak)return;var sel=FOLDERS.filter(function(f){return f.sel;});if(!sel.length)return;var col=[];for(var i=0;i<sel.length;i++){try{var imgs=await fetchFolder(sel[i],ak);sel[i].count=imgs.length;imgs.forEach(function(img){col.push(Object.assign({},img,{fn:sel[i].name}));});}catch(e){return;}}renderFolders();var newImgs=col.filter(function(f){return!knownIds.has(f.id);});if(newImgs.length>0){var ak2=document.getElementById('api-key').value.trim();var ordered=sortImgs(newImgs);allImages=allImages.concat(ordered);ordered.forEach(function(img){knownIds.add(img.id);appendSlide(img,ak2);});showToast('+'+newImgs.length+' nueva'+(newImgs.length>1?'s':'')+' 🔥');updateCtr();}if(refreshSec>0)startCd(refreshSec);}
+
+function sortImgs(imgs){var ord=document.getElementById('ordsel').value;var a=imgs.slice();if(ord==='date-asc')a.sort(function(x,y){return new Date(x.createdTime)-new Date(y.createdTime);});else if(ord==='date-desc')a.sort(function(x,y){return new Date(y.createdTime)-new Date(x.createdTime);});else if(ord==='name-asc')a.sort(function(x,y){return x.name.localeCompare(y.name);});else a.sort(function(){return Math.random()-.5;});return a;}
+
+function buildSlideshow(images,ak){var frame=document.getElementById('slide-frame');frame.querySelectorAll('.slide').forEach(function(s){s.remove();});slides=[];curIdx=0;document.getElementById('dnav').innerHTML='';document.getElementById('no-images').style.display=images.length?'none':'';images.forEach(function(img){appendSlide(img,ak);});if(slides.length)goTo(0);restartSlideTimer();updateCtr();}
+
+function appendSlide(imgData,ak){var frame=document.getElementById('slide-frame');var div=document.createElement('div');div.className='slide';var el=document.createElement('img');el.alt=imgData.name;el.src='https://lh3.googleusercontent.com/d/'+imgData.id;el.onerror=function(){el.src='https://drive.google.com/thumbnail?id='+imgData.id+'&sz=w800';};div.appendChild(el);frame.insertBefore(div,document.getElementById('toast'));slides.push(div);var dot=document.createElement('div');dot.className='dot';(function(d){dot.onclick=function(){goTo(slides.indexOf(d));};})(div);document.getElementById('dnav').appendChild(dot);document.getElementById('no-images').style.display='none';}
+
+function goTo(idx){if(!slides.length)return;if(slides[curIdx])slides[curIdx].classList.remove('active');var dots=document.querySelectorAll('.dot');if(dots[curIdx])dots[curIdx].classList.remove('active');curIdx=(idx+slides.length)%slides.length;var s=slides[curIdx];var tr=document.getElementById('trsel').value;if(tr==='slide'){s.style.transform='translateY(20px)';s.style.transition='opacity .6s ease,transform .6s ease';requestAnimationFrame(function(){s.style.transform='translateY(0)';});}else if(tr==='zoom'){s.style.transform='scale(.94)';s.style.transition='opacity .7s ease,transform .7s ease';requestAnimationFrame(function(){s.style.transform='scale(1)';});}else{s.style.transform='';s.style.transition='opacity .8s ease';}s.classList.add('active');dots=document.querySelectorAll('.dot');if(dots[curIdx])dots[curIdx].classList.add('active');updateCtr();}
+function next(){goTo(curIdx+1);}
+function prev(){goTo(curIdx-1);}
+function restartSlideTimer(){clearInterval(slideTimer);if(intervalSec>0&&slides.length>1)slideTimer=setInterval(next,intervalSec*1000);}
+function updateCtr(){document.getElementById('ctr').textContent=slides.length?(curIdx+1)+'/'+slides.length:'';}
+
+var toastT=null;
+function showToast(msg){var t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');clearTimeout(toastT);toastT=setTimeout(function(){t.classList.remove('show');},3500);}
+function setSt(t,m){var el=document.getElementById('lstatus');el.textContent=m;el.className='sm '+t;}
+
+function save(){try{localStorage.setItem('mrchv1',JSON.stringify({ak:document.getElementById('api-key').value,folders:FOLDERS,w:document.getElementById('wslider').value,bgOn:bgOn,bgCol:document.getElementById('bgcol').value,bgOpa:document.getElementById('bgopa').value,iv:intervalSec,tr:document.getElementById('trsel').value,ord:document.getElementById('ordsel').value,rf:refreshSec}));}catch(e){}}
+
+function loadSaved(){try{var raw=localStorage.getItem('mrchv1');if(!raw)return false;var c=JSON.parse(raw);if(c.ak)document.getElementById('api-key').value=c.ak;if(c.folders&&c.folders.length)c.folders.forEach(function(f){addFolderEntry(f.id,f.name,f.sel,f.count);});else loadPresets();if(c.w){document.getElementById('wslider').value=c.w;setW(c.w,true);}if(c.bgOn===false)toggleBg(true);if(c.bgCol)document.getElementById('bgcol').value=c.bgCol;if(c.bgOpa){document.getElementById('bgopa').value=c.bgOpa;document.getElementById('opaval').textContent=c.bgOpa+'%';}if(c.iv){document.getElementById('ivslider').value=c.iv;setIv(c.iv,true);}if(c.tr)document.getElementById('trsel').value=c.tr;if(c.ord)document.getElementById('ordsel').value=c.ord;if(c.rf!==undefined)setRefresh(c.rf,true);applyBg();return true;}catch(e){return false;}}
+
+function loadPresets(){PRESETS.forEach(function(f){addFolderEntry(f.id,f.name,true,null);});}
+
+function exportUrl(){var base=window.location.href.split('?')[0];var p=new URLSearchParams({ak:document.getElementById('api-key').value,fids:FOLDERS.filter(function(f){return f.sel;}).map(function(f){return f.id;}).join(','),fnames:FOLDERS.filter(function(f){return f.sel;}).map(function(f){return f.name;}).join('|'),w:document.getElementById('wslider').value,bg:bgOn?'1':'0',bgc:document.getElementById('bgcol').value.replace('#',''),bgo:document.getElementById('bgopa').value,iv:intervalSec,tr:document.getElementById('trsel').value,ord:document.getElementById('ordsel').value,rf:refreshSec});var url=base+'?'+p.toString();navigator.clipboard.writeText(url).then(function(){var el=document.getElementById('urlst');el.textContent='✓ URL copiada';el.className='sm ok';}).catch(function(){var el=document.getElementById('urlst');el.textContent=url;el.style.wordBreak='break-all';el.className='sm';});}
+
+function readUrl(){var p=new URLSearchParams(window.location.search);if(p.has('ak'))document.getElementById('api-key').value=p.get('ak');if(p.has('w')){document.getElementById('wslider').value=p.get('w');setW(p.get('w'),true);}if(p.has('bg')&&p.get('bg')==='0')toggleBg(true);if(p.has('bgc'))document.getElementById('bgcol').value='#'+p.get('bgc');if(p.has('bgo')){document.getElementById('bgopa').value=p.get('bgo');document.getElementById('opaval').textContent=p.get('bgo')+'%';}if(p.has('iv')){document.getElementById('ivslider').value=p.get('iv');setIv(p.get('iv'),true);}if(p.has('tr'))document.getElementById('trsel').value=p.get('tr');if(p.has('ord'))document.getElementById('ordsel').value=p.get('ord');if(p.has('fids')&&p.get('fids')){var ids=p.get('fids').split(',').filter(Boolean);var names=p.has('fnames')?p.get('fnames').split('|'):[];ids.forEach(function(id,i){addFolderEntry(id,names[i]||id,true,null);});}else loadPresets();applyBg();setRefresh(p.has('rf')?parseInt(p.get('rf')):30,true);if(p.has('ak')&&p.has('fids')&&p.get('fids'))setTimeout(manualRefresh,1500);}
+
+document.addEventListener('DOMContentLoaded',function(){applyBg();setW(320,true);document.getElementById('wslider').value=320;setIv(4,true);if(window.location.search.length>1)readUrl();else if(!loadSaved())loadPresets();});
+
+document.addEventListener('keydown',function(e){if(e.key==='ArrowRight')next();else if(e.key==='ArrowLeft')prev();else if(e.key==='Escape'&&panelOpen)togglePanel();});
+</script>
+</body>
+</html>
