@@ -33,9 +33,35 @@ body{background:transparent;overflow:hidden;width:100vw;height:100vh}
   display:flex;align-items:center;justify-content:center;
   opacity:0;transition:opacity .8s ease,transform .8s ease;
   pointer-events:none;
+  flex-direction:column;
 }
 .slide.active{opacity:1;pointer-events:auto}
-.slide img{max-width:100%;max-height:100%;object-fit:contain;display:block}
+.slide img{max-width:100%;max-height:calc(100% - 36px);object-fit:contain;display:block;flex-shrink:0}
+
+/* Nombre del archivo debajo de la imagen */
+.slide-name {
+  flex-shrink:0;
+  margin-top:6px;
+  background:#000;
+  color:#fff;
+  font-family:'Arial Black','Impact',sans-serif;
+  font-weight:900;
+  font-style:italic;
+  font-size:13px;
+  letter-spacing:.04em;
+  text-transform:uppercase;
+  padding:5px 16px;
+  border-radius:999px;
+  max-width:92%;
+  text-align:center;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  opacity:0;
+  transition:opacity .4s ease;
+}
+.slide.active .slide-name { opacity:1; }
+.slide-name.hidden { display:none; }
 
 #no-images{
   color:rgba(255,255,255,.35);font-family:'Segoe UI',sans-serif;
@@ -210,6 +236,14 @@ input[type=range]{width:100%;accent-color:#fff;cursor:pointer}
   </div>
 
   <div class="sec">
+    <span class="lbl">Nombre del producto</span>
+    <div class="trow" onclick="toggleNames()">
+      <div class="tog on" id="nmtog"></div>
+      <span id="nmlbl">Nombre visible debajo</span>
+    </div>
+  </div>
+
+  <div class="sec">
     <span class="lbl">PNG promo (abajo)</span>
     <div class="trow" onclick="togglePromo()">
       <div class="tog on" id="protog"></div>
@@ -293,7 +327,7 @@ var PRESETS = [
 
 var slides = [], allImages = [], knownIds = new Set();
 var curIdx = 0, slideTimer = null, refreshTimer = null, cdTimer = null;
-var refreshSec = 60, intervalSec = 5, bgOn = true, promoOn = true, panelOpen = false;
+var refreshSec = 60, intervalSec = 5, bgOn = true, promoOn = true, namesOn = true, panelOpen = false;
 var FOLDERS = [];
 
 // ── Panel ──────────────────────────────────────────
@@ -326,6 +360,16 @@ function togglePromo(ns) {
   document.getElementById('protog').classList.toggle('on', promoOn);
   document.getElementById('prolbl').textContent = promoOn ? 'PNG visible' : 'PNG oculto';
   document.getElementById('promo').style.display = promoOn ? '' : 'none';
+  if (!ns) save();
+}
+
+function toggleNames(ns) {
+  namesOn = !namesOn;
+  document.getElementById('nmtog').classList.toggle('on', namesOn);
+  document.getElementById('nmlbl').textContent = namesOn ? 'Nombre visible debajo' : 'Sin nombre';
+  document.querySelectorAll('.slide-name').forEach(function(el) {
+    el.classList.toggle('hidden', !namesOn);
+  });
   if (!ns) save();
 }
 
@@ -541,9 +585,16 @@ function appendSlide(imgData, ak) {
   el.src = 'https://lh3.googleusercontent.com/d/' + imgData.id;
   el.onerror = function() { el.src = 'https://drive.google.com/thumbnail?id=' + imgData.id + '&sz=w800'; };
   div.appendChild(el);
+
+  // Nombre: quitar extensión png/jpg/jpeg/gif/webp
+  var cleanName = imgData.name.replace(/\.(png|jpg|jpeg|gif|webp)$/i, '');
+  var nameEl = document.createElement('div');
+  nameEl.className = 'slide-name' + (namesOn ? '' : ' hidden');
+  nameEl.textContent = cleanName;
+  div.appendChild(nameEl);
+
   frame.insertBefore(div, document.getElementById('toast'));
   slides.push(div);
-
   var dot = document.createElement('div');
   dot.className = 'dot';
   (function(d) { dot.onclick = function() { goTo(slides.indexOf(d)); }; })(div);
@@ -610,7 +661,7 @@ function save() {
       folders: FOLDERS,
       w: document.getElementById('wslider').value,
       pos: document.getElementById('psel').value,
-      bgOn: bgOn, promoOn: promoOn,
+      bgOn: bgOn, promoOn: promoOn, namesOn: namesOn,
       bgCol: document.getElementById('bgcol').value,
       bgOpa: document.getElementById('bgopa').value,
       iv: intervalSec,
@@ -634,6 +685,7 @@ function loadSaved() {
     if (c.pos) { document.getElementById('psel').value = c.pos; setPos(c.pos, true); }
     if (c.bgOn === false) toggleBg(true);
     if (c.promoOn === false) togglePromo(true);
+    if (c.namesOn === false) toggleNames(true);
     if (c.bgCol) document.getElementById('bgcol').value = c.bgCol;
     if (c.bgOpa) { document.getElementById('bgopa').value = c.bgOpa; document.getElementById('opaval').textContent = c.bgOpa + '%'; }
     if (c.iv) { document.getElementById('ivslider').value = c.iv; setIv(c.iv, true); }
@@ -660,6 +712,7 @@ function exportUrl() {
     pos: document.getElementById('psel').value,
     bg: bgOn ? '1' : '0',
     prom: promoOn ? '1' : '0',
+    nm: namesOn ? '1' : '0',
     bgc: document.getElementById('bgcol').value.replace('#', ''),
     bgo: document.getElementById('bgopa').value,
     iv: intervalSec,
@@ -708,6 +761,7 @@ function readUrl() {
   if (p.has('pos')) { document.getElementById('psel').value = p.get('pos'); setPos(p.get('pos'), true); }
   if (p.has('bg') && p.get('bg') === '0') toggleBg(true);
   if (p.has('prom') && p.get('prom') === '0') togglePromo(true);
+  if (p.has('nm') && p.get('nm') === '0') toggleNames(true);
   if (p.has('bgc')) document.getElementById('bgcol').value = '#' + p.get('bgc');
   if (p.has('bgo')) { document.getElementById('bgopa').value = p.get('bgo'); document.getElementById('opaval').textContent = p.get('bgo') + '%'; }
   if (p.has('iv')) { document.getElementById('ivslider').value = p.get('iv'); setIv(p.get('iv'), true); }
